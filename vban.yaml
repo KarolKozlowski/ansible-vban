@@ -20,8 +20,13 @@
     vban_port: 6980
     vban_receiver_enabled: true
     vban_receiver_audio_device: "softvol"
+    vban_receiver_source: 172.16.1.201
+    vban_receiver_stream: vban
+    vban_receiver_network_quality: "0"
     vban_emitter_enabled: false
     vban_emitter_audio_device: "hw:0"
+    vban_emitter_target: 172.16.1.207
+    vban_emitter_stream: vban
   handlers:
     - name: Restart vban-receiver
       ansible.builtin.systemd:
@@ -119,9 +124,9 @@
         mode: "0644"
         owner: root
       vars:
-        vban_source: 172.16.1.201
-        vban_stream: vban
-        vban_network_quality: "0"
+        vban_source: "{{ vban_receiver_source }}"
+        vban_stream: "{{ vban_receiver_stream }}"
+        vban_network_quality: "{{ vban_receiver_network_quality }}"
         vban_audio_device: "{{ vban_receiver_audio_device }}"
       notify:
         - Restart vban-receiver
@@ -132,8 +137,8 @@
         mode: "0644"
         owner: root
       vars:
-        vban_target: 172.16.1.207
-        vban_stream: vban
+        vban_target: "{{ vban_emitter_target }}"
+        vban_stream: "{{ vban_emitter_stream }}"
         vban_audio_device: "{{ vban_emitter_audio_device }}"
       notify:
         - Restart vban-emitter
