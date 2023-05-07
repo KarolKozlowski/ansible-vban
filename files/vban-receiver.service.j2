@@ -1,0 +1,21 @@
+[Unit]
+Description=VBAN Receiver for {{ vban_stream }}@{{ vban_source }}
+Wants=network-online.target
+
+[Service]
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=20
+
+ExecStart=/opt/vban/vban_receptor \
+    -i {{ vban_source }} \
+    -p {{ vban_port |default("6980", true) }} \
+    -s {{ vban_stream }} \
+    -d {{ vban_audio_device | default("default", true) }} \
+    -q {{ vban_network_quality | default("1", true) }} \
+    &
+
+WorkingDirectory={{ vban_bin }}
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

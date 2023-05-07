@@ -1,0 +1,19 @@
+# Use null as default audio device
+
+pcm.!default null
+ctl.!default null
+
+
+pcm.softvol {
+  type softvol
+  slave {
+    pcm "{{ hardware_audio_device }}"
+  }
+  control {
+    name "pre-amp"
+    card 0
+  }
+  min_dB {{ softvol_maxdb }}
+  max_dB {{ softvol_mindb }}
+  resolution {{ softvol_resolution }}
+}

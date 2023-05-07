@@ -1,0 +1,151 @@
+---
+
+- name: Perform common setup tasks
+  hosts: all
+  become: true
+  vars:
+    # ALSA softvol parameters
+    softvol_maxdb: "-6.0"
+    softvol_mindb: "12.0"
+    softvol_resolution: "100"
+    softvol_volume: 70
+
+    hardware_audio_device: "hw:0"
+
+    # VBAN build parameters
+    vban_src: "/srv/vban"
+    vban_bin: "/opt/vban"
+
+    # VBAN protocol parameters
+    vban_port: 6980
+    vban_receiver_enabled: true
+    vban_receiver_audio_device: "softvol"
+    vban_emitter_enabled: false
+    vban_emitter_audio_device: "hw:0"
+  handlers:
+    - name: Restart vban-receiver
+      ansible.builtin.systemd:
+        state: restarted
+        daemon_reload: true
+        name: vban-receiver
+      when: vban_receiver_enabled | bool
+    - name: Restart vban-emitter
+      ansible.builtin.systemd:
+        state: restarted
+        daemon_reload: true
+        name: vban-emitter
+      when: vban_emitter_enabled | bool
+    - name: Set hardware output volume
+      ansible.builtin.command:
+        cmd: amixer -D {{ hardware_audio_device }} sset PCM 100%
+
+    - name: Set pre-amp output volume
+      ansible.builtin.command:
+        cmd: amixer -D {{ hardware_audio_device }} sset pre-amp {{ ( softvol_volume-1 | int | abs ) }}
+
+    - name: Build vban
+      ansible.builtin.shell:
+        cmd: |
+          ./autogen.sh
+          ./configure --disable-pulseaudio --disable-jack
+          make
+        chdir: "{{ vban_src }}"
+  tasks:
+    - name: Install packages
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - git
+        - alsa-utils
+        - "@Development Tools"
+        - alsa-lib-devel
+    - name: remove conflicting packages
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - pipewire
+    - name: install pip packages
+      ansible.builtin.pip:
+        name: "{{ item }}"
+        state: present
+      with_items: []
+    - name: Checkout vban repository
+      ansible.builtin.git:
+        repo: 'https://github.com/quiniouben/vban.git'
+        dest: "{{ vban_src }}"
+        version: master
+      notify:
+        - Build vban
+    - name: Flush handlers
+      ansible.builtin.meta: flush_handlers
+    - name: Create vban binaries directory
+      ansible.builtin.file:
+        path: "{{ vban_bin }}"
+        state: directory
+        mode: '0755'
+    - name: Copy a vban binaries
+      ansible.builtin.copy:
+        src: "{{ vban_src }}/src/{{ item }}"
+        dest: "{{ vban_bin }}/{{ item }}"
+        mode: '0755'
+        remote_src: true
+      with_items:
+        - vban_emitter
+        - vban_receptor
+        - vban_sendtext
+        - vban_url_receptor
+    - name: Configure ALSA
+      ansible.builtin.template:
+        src: "files/asound.conf.j2"
+        dest: "/etc/asound.conf"
+        mode: "0644"
+        owner: root
+      notify:
+        - Set hardware output volume
+        - Set pre-amp output volume
+        - Restart vban-receiver
+        - Restart vban-emitter
+    - name: Enable vban on firewall
+      ansible.posix.firewalld:
+        port: "{{ vban_port }}/udp"
+        permanent: true
+        state: enabled
+    - name: Template vban receiver service
+      ansible.builtin.template:
+        src: files/vban-receiver.service.j2
+        dest: "/usr/lib/systemd/system/vban-receiver.service"
+        mode: "0644"
+        owner: root
+      vars:
+        vban_source: 172.16.1.201
+        vban_stream: vban
+        vban_network_quality: "0"
+        vban_audio_device: "{{ vban_receiver_audio_device }}"
+      notify:
+        - Restart vban-receiver
+    - name: Template vban emitter service
+      ansible.builtin.template:
+        src: files/vban-emitter.service.j2
+        dest: "/usr/lib/systemd/system/vban-emitter.service"
+        mode: "0644"
+        owner: root
+      vars:
+        vban_target: 172.16.1.207
+        vban_stream: vban
+        vban_audio_device: "{{ vban_emitter_audio_device }}"
+      notify:
+        - Restart vban-emitter
+    - name: "Start and enable vban receiver"
+      ansible.builtin.service:
+        name: "vban-receiver"
+        state: "{{ 'started' if vban_receiver_enabled else 'stopped' }}"
+        enabled: "{{ vban_receiver_enabled }}"
+        daemon_reload: true
+    - name: "Start and enable vban emitter"
+      ansible.builtin.service:
+        name: "vban-emitter"
+        state: "{{ 'started' if vban_emitter_enabled else 'stopped' }}"
+        enabled: "{{ vban_emitter_enabled }}"
+        daemon_reload: true
