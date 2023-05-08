@@ -1,9 +1,15 @@
+# File managed with ansible, all changes will be overwritten
+#
+# main volume: {{ hardware_audio_output_volume }}
+# pre-amp volume: {{ softvol_volume }}%
+# ^^ workaround for adjusting volume on change
+
 # Use null as default audio device
 
 pcm.!default null
 ctl.!default null
 
-
+# Add softvol plugin for boosting volume
 pcm.softvol {
   type softvol
   slave {
@@ -17,3 +23,4 @@ pcm.softvol {
   max_dB {{ softvol_mindb }}
   resolution {{ softvol_resolution }}
 }
+

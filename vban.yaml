@@ -11,6 +11,7 @@
     softvol_volume: 70
 
     hardware_audio_device: "hw:0"
+    hardware_audio_output_volume: "100%"
 
     # VBAN build parameters
     vban_src: "/srv/vban"
@@ -42,7 +43,7 @@
       when: vban_emitter_enabled | bool
     - name: Set hardware output volume
       ansible.builtin.command:
-        cmd: amixer -D {{ hardware_audio_device }} sset PCM 100%
+        cmd: amixer -D {{ hardware_audio_device }} sset PCM {{ hardware_audio_output_volume }}
 
     - name: Set pre-amp output volume
       ansible.builtin.command:
