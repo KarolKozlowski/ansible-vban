@@ -3,8 +3,10 @@ Description=VBAN Receiver for {{ vban_stream }}@{{ vban_source }}
 Wants=network-online.target
 
 [Service]
-CPUSchedulingPolicy=fifo
-CPUSchedulingPriority=20
+CPUSchedulingPolicy={{ cpu_scheduling_policy | default("fifo", true) }}
+CPUSchedulingPriority={{ cpu_scheduling_priority | default("20", true) }}
+IOSchedulingClass={{ io_scheduling_class | default("realtime", true) }}
+IOSchedulingPriority={{ io_scheduling_priority | default("5", true) }}
 
 ExecStart=/opt/vban/vban_receptor \
     -i {{ vban_source }} \

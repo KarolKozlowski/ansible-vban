@@ -28,6 +28,13 @@
     vban_emitter_audio_device: "hw:0"
     vban_emitter_target: 172.16.1.207
     vban_emitter_stream: vban
+
+    # Service priority tuning
+    cpu_scheduling_policy: fifo
+    cpu_scheduling_priority: "20"
+    io_scheduling_class: realtime
+    io_scheduling_priority: "5"
+
   handlers:
     - name: Restart vban-receiver
       ansible.builtin.systemd:
