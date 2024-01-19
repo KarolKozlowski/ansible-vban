@@ -8,7 +8,7 @@
     softvol_maxdb: "-6.0"
     softvol_mindb: "12.0"
     softvol_resolution: "100"
-    softvol_volume: 70
+    softvol_volume: 60
 
     hardware_audio_device: "hw:0"
     hardware_audio_output_volume: "100%"
